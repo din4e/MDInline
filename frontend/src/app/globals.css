@@ -1,0 +1,416 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-app: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #07b85b;
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: #079b4e;
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+@theme inline {
+  --font-heading: var(--font-app);
+  --font-sans: var(--font-app);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: #07c160;
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: #07c160;
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: #07c160;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: #07c160;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    /* Unified narrow scrollbar (Firefox). */
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 45%, transparent) transparent;
+  }
+
+  /* Unified narrow scrollbar (WebKit / WebView2). */
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
+    border-radius: 9999px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklch, var(--muted-foreground) 70%, transparent);
+  }
+
+  html {
+    @apply h-full font-sans;
+  }
+
+  body {
+    @apply h-full bg-background text-foreground antialiased;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+   Template Market — editorial specimen gallery.
+   Scoped to .tm-scope so it never bleeds outside the dialog. The
+   surfaces derive from the app's own design tokens (--background /
+   --card / --border / --foreground …), so the dialog shares the main
+   app's background and follows the light/dark toggle automatically —
+   no separate color theme needed. The editorial character lives in
+   the serif type + a single warm gold accent (overline, active filter,
+   apply button): the gallery's one distinctive note on the neutral
+   app surface.
+   ──────────────────────────────────────────────────────────── */
+.tm-scope {
+  --tm-bg: var(--background);
+  --tm-panel: var(--card);
+  --tm-hair: var(--border);
+  --tm-hair-2: color-mix(in oklch, var(--foreground) 20%, transparent);
+  --tm-text: var(--foreground);
+  --tm-muted: var(--muted-foreground);
+  --tm-faint: color-mix(in oklch, var(--muted-foreground) 72%, transparent);
+  --tm-gold: #a88132;
+  --tm-zoom-bg: color-mix(in oklch, var(--background) 78%, transparent);
+  --tm-scroll: color-mix(in oklch, var(--muted-foreground) 30%, transparent);
+  --tm-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.35);
+  color: var(--tm-text);
+  background-color: var(--tm-bg);
+}
+.dark .tm-scope {
+  /* Lighter gold + deeper lift read better on the dark app surface. */
+  --tm-gold: #cda86a;
+  --tm-hair-2: color-mix(in oklch, var(--foreground) 24%, transparent);
+  --tm-shadow: 0 24px 50px -24px rgba(0, 0, 0, 0.8);
+}
+.tm-scope * {
+  scrollbar-color: var(--tm-scroll) transparent;
+}
+.tm-scope *::-webkit-scrollbar-thumb {
+  background: var(--tm-scroll);
+}
+.tm-scope *::-webkit-scrollbar-thumb:hover {
+  background: var(--tm-faint);
+}
+
+.tm-serif {
+  font-family: Georgia, "Times New Roman", "Songti SC", "Source Han Serif SC",
+    "Noto Serif CJK SC", "SimSun", serif;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+.tm-overline {
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--tm-gold);
+}
+.tm-muted { color: var(--tm-muted); }
+.tm-faint { color: var(--tm-faint); }
+.tm-hair-b { border-color: var(--tm-hair); }
+.tm-hair-b-2 { border-color: var(--tm-hair-2); }
+.tm-rule {
+  height: 1px;
+  background: linear-gradient(to right, var(--tm-hair-2), transparent);
+}
+
+/* Filter tabs — quiet text, gold underline on the active one. */
+.tm-filter {
+  position: relative;
+  padding: 6px 0;
+  color: var(--tm-faint);
+  font-size: 13px;
+  transition: color 0.2s ease;
+}
+.tm-filter:hover { color: var(--tm-text); }
+.tm-filter[aria-pressed="true"] { color: var(--tm-text); }
+.tm-filter[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--tm-gold);
+  border-radius: 2px;
+}
+
+/* The framed specimen (preview) — lifts on hover. */
+.tm-frame {
+  background: var(--tm-panel);
+  border: 1px solid var(--tm-hair);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.25s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+.tm-card:hover .tm-frame {
+  border-color: var(--tm-hair-2);
+  box-shadow: var(--tm-shadow);
+  transform: translateY(-3px);
+}
+
+/* Hover-revealed zoom affordance, overlaid on the frame. */
+.tm-zoom {
+  background: var(--tm-zoom-bg);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--tm-hair-2);
+  color: var(--tm-text);
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.tm-zoom:hover {
+  background: var(--tm-gold);
+  color: #1c1608;
+  border-color: var(--tm-gold);
+}
+
+.tm-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--tm-hair-2);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes tm-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+.tm-rise { animation: tm-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+@keyframes tm-fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.tm-fade { animation: tm-fade 0.35s ease both; }
+
+/* ────────────────────────────────────────────────────────────
+   CodeMirror editor (Markdown pane). The editor chrome is driven
+   by app tokens in Editor.tsx (EditorView.theme) so it follows the
+   light/dark toggle for free. Here we only define:
+   - the --cm-* syntax-highlight hues (light on :root, lighter on .dark),
+   - the .cm-mdimg inline thumbnail that collapses a ![](data:…) image.
+   ──────────────────────────────────────────────────────────── */
+:root {
+  --cm-heading: #2b4f8c;
+  --cm-strong: var(--foreground);
+  --cm-link: #2563eb;
+  --cm-url: #0e7490;
+  --cm-code: #be185d;
+  --cm-quote: var(--muted-foreground);
+  --cm-list: #b45309;
+  --cm-meta: color-mix(in oklch, var(--foreground) 42%, transparent);
+}
+.dark {
+  --cm-heading: #a5b4fc;
+  --cm-link: #60a5fa;
+  --cm-url: #22d3ee;
+  --cm-code: #f472b6;
+  --cm-quote: var(--muted-foreground);
+  --cm-list: #fbbf24;
+  --cm-meta: color-mix(in oklch, var(--foreground) 52%, transparent);
+}
+
+/* The editor must never let a huge data-URL line blow up the pane: the
+   scroller scrolls internally and the editor is hard-clamped to the pane.
+   @uiw/react-codemirror wraps .cm-editor in a theme div (e.g. .cm-theme-none)
+   that defaults to display:block / height:auto — without the rules below it
+   grows to its content's natural height and the pane clips the bottom. */
+.cm-app-editor { display: flex; flex-direction: column; min-height: 0; }
+.cm-app-editor > div { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.cm-app-editor .cm-editor { flex: 1 1 0; min-height: 0; }
+.cm-app-editor .cm-scroller { overflow: auto; }
+
+/* Collapsed ![](data:…) image — a compact card that stands in for the whole
+   image so the giant base64 is never rendered as editable text. Block cards
+   own their line (no wrapping of the base64); inline cards sit in text.    */
+.cm-mdimg-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: min(100%, 440px);
+  margin: 1px 2px;
+  padding: 3px 8px 3px 3px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  vertical-align: baseline;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.cm-mdimg-card.is-block { display: flex; margin: 4px 0; }
+.cm-mdimg-card:hover {
+  border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+  box-shadow: 0 1px 6px -2px rgba(0, 0, 0, 0.18);
+}
+.cm-mdimg-card.is-selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--primary) 30%, transparent);
+}
+.cm-mdimg-thumb {
+  display: block;
+  height: 38px;
+  width: auto;
+  max-width: 58px;
+  flex: 0 0 auto;
+  border-radius: 5px;
+  object-fit: cover;
+  background: var(--muted);
+}
+.cm-mdimg-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.cm-mdimg-cap {
+  font-size: 0.82em;
+  color: var(--foreground);
+  max-width: 22em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cm-mdimg-meta {
+  font-size: 0.68em;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+.cm-mdimg-del {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 18px;
+  height: 18px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--destructive);
+  color: #fff;
+  border: 1.5px solid var(--background);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.cm-mdimg-card:hover .cm-mdimg-del { display: inline-flex; }

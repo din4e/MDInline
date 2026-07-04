@@ -1,0 +1,8 @@
+services:
+  mdinline:
+    build: .
+    image: mdinline:latest
+    container_name: mdinline
+    ports:
+      - "8080:80"
+    restart: unless-stopped

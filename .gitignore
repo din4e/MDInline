@@ -1,0 +1,22 @@
+# MDInline —— Web 端项目根 .gitignore
+# 前端(frontend/)自带 .gitignore,已覆盖 node_modules / .next / out /
+# test-results / playwright-report / .env* / *.tsbuildinfo / next-env.d.ts 等,
+# 此处只补 root 级与 wails 相关的规则,避免重复。
+
+# --- 临时 / 截图 / 日志 ---
+tmp/
+
+# --- Wails 桌面端生成的 JS 绑定(仅桌面端构建会生成,Web 端用不到,不入库) ---
+frontend/wailsjs/
+
+# --- 前端调试临时文件 / 构建缓存碎屑 ---
+frontend/tmp/
+frontend/package.json.md5
+
+# --- 编辑器 / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+CLAUDE.md
