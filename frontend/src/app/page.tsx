@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Copy, FileType2, LoaderCircle, Store } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Copy, FileType2, LoaderCircle, ScrollText, Store } from "lucide-react";
 import { WeChatIcon, XiaohongshuIcon } from "@/components/brand-icons";
 import { toast } from "sonner";
 import { Editor } from "@/components/Editor";
@@ -23,6 +23,8 @@ import { useDocActions } from "@/hooks/useDocActions";
 import { useHotkey } from "@/hooks/useHotkey";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { usePaneLayout } from "@/hooks/usePaneLayout";
+import { useScrollSync } from "@/hooks/useScrollSync";
+import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { SAMPLE_MARKDOWN } from "@/lib/md";
 import { buildPreviewDoc, render } from "@/lib/pipeline";
 import {
@@ -179,6 +181,10 @@ export default function Page() {
   const [mobileTab, setMobileTab] = useState<MobileTab>("editor");
   const [marketOpen, setMarketOpen] = useState(false);
   const [wechatOpen, setWechatOpen] = useState(false);
+  /** Editor ↔ preview proportional scroll sync (off by default; toggle in the editor header). */
+  const [syncScroll, setSyncScroll] = useState(false);
+  const cmRef = useRef<ReactCodeMirrorRef>(null);
+  const previewIframeRef = useRef<HTMLIFrameElement>(null);
 
   const isDesktop = useMediaQuery("(min-width: 1100px)");
   const isMobile = useMediaQuery("(max-width: 720px)");
@@ -189,6 +195,12 @@ export default function Page() {
   const isDesktopView = hydrated ? isDesktop : true;
   const isMobileView = hydrated && isMobile;
   const layout = usePaneLayout(isDesktopView);
+
+  // Scroll-sync only meaningful when editor + preview are both on screen
+  // (desktop / tablet). On mobile they're separate tabs, so it's inert.
+  const getEditorScroller = useCallback(() => cmRef.current?.view?.scrollDOM ?? null, []);
+  const getPreviewIframe = useCallback(() => previewIframeRef.current, []);
+  useScrollSync(getEditorScroller, getPreviewIframe, syncScroll && !isMobileView);
 
   // Load persisted markdown + theme on mount (avoids SSR hydration mismatch).
   useEffect(() => {
@@ -250,6 +262,25 @@ export default function Page() {
   useHotkey({ key: "d" }, actions.exportDocx, !actions.busy);
 
   const chars = markdown.length.toLocaleString("zh-CN");
+  const editorMeta = (
+    <>
+      <span>{chars} 字符</span>
+      <Button
+        variant="ghost"
+        size="xs"
+        aria-pressed={syncScroll}
+        onClick={() => setSyncScroll((v) => !v)}
+        title={syncScroll ? "关闭滚动跟随" : "开启滚动跟随：编辑与预览同步滚动"}
+        className={cn(
+          collapseIconBtn.xs,
+          syncScroll ? "text-primary hover:text-primary" : "text-muted-foreground",
+        )}
+      >
+        <ScrollText />
+        <span className={HIDE_LABEL_960}>{syncScroll ? "跟随中" : "滚动跟随"}</span>
+      </Button>
+    </>
+  );
   const liveMeta = (
     <>
       <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
@@ -285,8 +316,10 @@ export default function Page() {
   );
 
   // Pane bodies — defined once, reused across desktop / tablet / mobile layouts.
-  const editorCell = <Editor value={markdown} onChange={setMarkdown} onToast={notify} />;
-  const previewCell = <Preview doc={previewDoc} />;
+  const editorCell = (
+    <Editor value={markdown} onChange={setMarkdown} onToast={notify} editorRef={cmRef} />
+  );
+  const previewCell = <Preview doc={previewDoc} iframeRef={previewIframeRef} />;
   const styleCell = <StylePanel theme={theme} update={update} />;
 
   return (
@@ -404,7 +437,7 @@ export default function Page() {
                   index="01"
                   title="Markdown 编辑"
                   titleId="editor-title"
-                  meta={`${chars} 字符`}
+                  meta={editorMeta}
                   collapseDir="left"
                   onCollapse={() => layout.toggle("editor")}
                 />
@@ -456,7 +489,7 @@ export default function Page() {
         // Tablet (720–1100px): 2-col grid, style spans the full second row.
         <main className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-px overflow-hidden bg-border">
           <section className={paneClass} aria-labelledby="editor-title">
-            <PaneHeader index="01" title="Markdown 编辑" titleId="editor-title" meta={`${chars} 字符`} />
+            <PaneHeader index="01" title="Markdown 编辑" titleId="editor-title" meta={editorMeta} />
             {editorCell}
           </section>
           <section className={paneClass} aria-labelledby="preview-title">
