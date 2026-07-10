@@ -1,10 +1,19 @@
 "use client";
 
-import { useMemo, useRef } from "react";
-import CodeMirror from "@uiw/react-codemirror";
+import { useMemo, useRef, useState } from "react";
+import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import { getSearchQuery, search } from "@codemirror/search";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting, syntaxTree } from "@codemirror/language";
-import { Decoration, type DecorationSet, EditorView, keymap, WidgetType } from "@codemirror/view";
+import {
+  Decoration,
+  type DecorationSet,
+  EditorView,
+  type ViewUpdate,
+  keymap,
+  ViewPlugin,
+  WidgetType,
+} from "@codemirror/view";
 import {
   EditorSelection,
   EditorState,
@@ -13,6 +22,7 @@ import {
   StateField,
 } from "@codemirror/state";
 import { tags } from "@lezer/highlight";
+import { FindReplaceBar } from "@/components/FindReplaceBar";
 
 /**
  * Pasted/dropped images are embedded as `![](data:…)` so they render in the
@@ -386,25 +396,104 @@ const insertTwoSpaces = (view: EditorView): boolean => {
   return true;
 };
 
+/* ── Find/replace match highlighting ──────────────────────────────────────
+   CodeMirror's built-in search highlighter only runs while its panel is open
+   (`if (!panel …) return Decoration.none`). We replaced the panel with our own
+   FindReplaceBar, so that highlighter stays dormant. This ViewPlugin reads the
+   live query from the search state and marks matches in the viewport instead,
+   using the .cm-searchMatch / .cm-searchMatch-selected styles in globals.css. */
+const matchMark = Decoration.mark({ class: "cm-searchMatch" });
+const selectedMatchMark = Decoration.mark({ class: "cm-searchMatch-selected" });
+
+const matchHighlighter = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet = Decoration.none;
+    constructor(view: EditorView) {
+      this.decorations = this.compute(view);
+    }
+    update(u: ViewUpdate) {
+      if (
+        getSearchQuery(u.startState) !== getSearchQuery(u.state) ||
+        u.docChanged ||
+        u.viewportChanged ||
+        u.selectionSet
+      ) {
+        this.decorations = this.compute(u.view);
+      }
+    }
+    compute(view: EditorView): DecorationSet {
+      const query = getSearchQuery(view.state);
+      if (!query.valid) return Decoration.none;
+      const builder = new RangeSetBuilder<Decoration>();
+      for (const range of view.visibleRanges) {
+        const cursor = query.getCursor(view.state, range.from, range.to);
+        for (;;) {
+          const step = cursor.next();
+          if (step.done) break;
+          const selected = view.state.selection.ranges.some(
+            (r) => r.from === step.value.from && r.to === step.value.to,
+          );
+          builder.add(step.value.from, step.value.to, selected ? selectedMatchMark : matchMark);
+        }
+      }
+      return builder.finish();
+    }
+  },
+  { decorations: (v) => v.decorations },
+);
+
 export function Editor({
   value,
   onChange,
   onToast,
+  editorRef,
 }: {
   value: string;
   onChange: (v: string) => void;
   onToast?: (msg: string) => void;
+  /** Exposes the underlying CodeMirror view (for scroll-sync: `view.scrollDOM`). */
+  editorRef?: React.RefObject<ReactCodeMirrorRef | null>;
 }) {
   // Keep the latest callbacks reachable from the (memoized, stable) extension
   // closures without re-creating the editor config on every keystroke.
   const callbacks = useRef({ onChange, onToast });
   callbacks.current = { onChange, onToast };
 
+  // The editor's own view, for the find/replace bar. (`editorRef` still exposes
+  // the @uiw wrapper to the page for scroll-sync; this one is Editor-internal.)
+  const viewRef = useRef<EditorView | null>(null);
+  const [fr, setFr] = useState<{ open: boolean; mode: "find" | "replace" }>({
+    open: false,
+    mode: "find",
+  });
+  // Reachable from the (memoized, []) keymap closure without re-creating it.
+  const openFindReplace = useRef<(mode: "find" | "replace") => void>(() => {});
+  openFindReplace.current = (mode) => setFr({ open: true, mode });
+  // The find/replace bar registers its live-update handler here.
+  const frCallbacks = useRef<{ onUpdate?: (u: ViewUpdate) => void }>({});
+
   const extensions = useMemo(
     () => [
       EditorView.lineWrapping,
       markdown({ base: markdownLanguage }),
       Prec.highest(keymap.of([{ key: "Tab", run: insertTwoSpaces }])),
+      // search(): the query state (setSearchQuery/getSearchQuery) + the
+      // find/replace commands. Its built-in viewport highlighter is dormant
+      // (it only runs while the panel is open, which we never open), so
+      // matchHighlighter below does the on-screen highlighting instead.
+      // basicSetup's searchKeymap is disabled (it opens the built-in English
+      // panel); our keymap drives the custom FindReplaceBar.
+      search(),
+      matchHighlighter,
+      // Forward every editor update to the bar so it can track N live.
+      EditorView.updateListener.of((u) => frCallbacks.current.onUpdate?.(u)),
+      Prec.highest(
+        keymap.of([
+          { key: "Mod-f", run: () => { openFindReplace.current("find"); return true; }, preventDefault: true },
+          // preventDefault so the browser's reload never fires on Ctrl+R.
+          { key: "Mod-r", run: () => { openFindReplace.current("replace"); return true; }, preventDefault: true },
+        ]),
+      ),
       EditorView.contentAttributes.of({
         role: "textbox",
         "aria-multiline": "true",
@@ -443,7 +532,24 @@ export function Editor({
 
   return (
     <div className="cm-app-editor min-h-0 flex-1 overflow-hidden bg-background">
+      {fr.open && (
+        <FindReplaceBar
+          viewRef={viewRef}
+          mode={fr.mode}
+          onClose={() => {
+            setFr((f) => ({ ...f, open: false }));
+            viewRef.current?.focus();
+          }}
+          registerOnUpdate={(fn) => {
+            frCallbacks.current.onUpdate = fn;
+          }}
+        />
+      )}
       <CodeMirror
+        ref={editorRef}
+        onCreateEditor={(view) => {
+          viewRef.current = view;
+        }}
         value={value}
         onChange={(v) => callbacks.current.onChange(v)}
         extensions={extensions}
@@ -457,7 +563,8 @@ export function Editor({
           highlightActiveLineGutter: false,
           highlightActiveLine: true,
           autocompletion: false,
-          searchKeymap: true,
+          // Our FindReplaceBar owns search; drop the built-in panel keymap.
+          searchKeymap: false,
           bracketMatching: true,
           closeBrackets: true,
           tabSize: 2,

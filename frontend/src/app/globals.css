@@ -334,9 +334,31 @@
    that defaults to display:block / height:auto — without the rules below it
    grows to its content's natural height and the pane clips the bottom. */
 .cm-app-editor { display: flex; flex-direction: column; min-height: 0; }
-.cm-app-editor > div { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+/* The direct child is the CodeMirror wrapper — except the find/replace bar
+   (.fr-bar), which must keep its natural height, not stretch to fill. */
+.cm-app-editor > div:not(.fr-bar) { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
 .cm-app-editor .cm-editor { flex: 1 1 0; min-height: 0; }
 .cm-app-editor .cm-scroller { overflow: auto; }
+
+/* Find/replace match highlighting (driven by the @codemirror/search query we
+   push from FindReplaceBar). The search extension's own base theme also styles
+   .cm-searchMatch (yellow in its "light" mode, cyan in "dark") via a
+   `.ͼN .cm-searchMatch` rule at specificity (0,2,0) — and our editor registers
+   as light, so it'd show yellow even in dark mode. We scope to
+   `.cm-app-editor .cm-editor` (specificity 0,3,0) to win, and use the app's
+   primary accent via color-mix so it reads in both themes. */
+.cm-app-editor .cm-editor .cm-searchMatch,
+.cm-app-editor .cm-editor .cm-searchMatch-selected {
+  border-radius: 2px;
+}
+.cm-app-editor .cm-editor .cm-searchMatch {
+  background-color: color-mix(in oklch, var(--primary) 22%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--primary) 35%, transparent);
+}
+.cm-app-editor .cm-editor .cm-searchMatch-selected {
+  background-color: color-mix(in oklch, var(--primary) 45%, transparent);
+  box-shadow: 0 0 0 1px var(--primary);
+}
 
 /* Collapsed ![](data:…) image — a compact card that stands in for the whole
    image so the giant base64 is never rendered as editable text. Block cards
