@@ -28,6 +28,19 @@ export const md: MarkdownIt = new MarkdownIt({
 });
 
 /**
+ * CJK IMEs often emit URL punctuation fullwidth — `https：//example.com` instead
+ * of `https://…`. The browser then can't read the scheme and treats the link as a
+ * broken relative URL, so clicking it (in the preview) or pasting it (into 公众号)
+ * goes nowhere useful. markdown-it routes every link/image href — inline
+ * `[t](u)`, reference links, and linkified bare URLs — through `normalizeLink`
+ * before mdurl encodes it, so we fold fullwidth `：`/`／` to ASCII here. That fixes
+ * the href in both the preview and the copied WeChat HTML in one place.
+ */
+const baseNormalizeLink = md.normalizeLink.bind(md);
+md.normalizeLink = (url: string) =>
+  baseNormalizeLink(url.replace(/：/g, ":").replace(/／/g, "/"));
+
+/**
  * Wrap every list item's CONTENT in a `<section>` — i.e. emit
  * `<li><section>…</section></li>` instead of `<li>…</li>`.
  *
