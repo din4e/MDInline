@@ -1,6 +1,6 @@
 {
   "name": "mdinline",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "把 Markdown 转成内联 CSS 的 HTML,可直接粘贴进微信公众号编辑器。",
   "author": "din4e",
