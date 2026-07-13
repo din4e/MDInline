@@ -2,6 +2,13 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.1.2] - 2026-07-13
+
+### 新增
+
+- **图片右键菜单**：编辑器与预览区的图片支持右键「保存图片」「复制图片地址」。
+- **原始 HTML 渲染**：markdown-it 由 `html: false` 改为 `html: true`，Markdown 里直接写的 HTML 标签照常渲染——支持公众号风格的 `<p align="center"><img …>` 居中图片、`data:` base64 内嵌图片、内联 `style`、`<div>` 包裹等。安全交由预览 iframe 的 `sandbox="allow-same-origin"`（无 `allow-scripts`）兜底：脚本不在预览执行，粘贴进公众号时其编辑器再二次过滤。
+
 ## [0.1.1] - 2026-07-10
 
 ### 新增
