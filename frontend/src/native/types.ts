@@ -25,10 +25,13 @@ export interface Native {
   /** Save text to a file: native save dialog (Wails) or browser download (Web). */
   saveText(content: string, defaultName: string, mime?: string): Promise<void>;
   /**
-   * Save raw bytes to a file (used for .docx). Wails base64-encodes and calls
-   * Go `SaveBytesFile`; Web triggers a browser download of a typed Blob.
+   * Save raw bytes to a file (used for .docx and for saving preview images).
+   * `mime` is only consulted by the Web impl (the Blob's content-type); Wails
+   * ignores it — Go `SaveBytesFile` writes the bytes verbatim and infers the
+   * type from the file extension in `defaultName`. Defaults to a generic
+   * `application/octet-stream` so a bare download always works.
    */
-  saveBytes(bytes: Uint8Array, defaultName: string): Promise<void>;
+  saveBytes(bytes: Uint8Array, defaultName: string, mime?: string): Promise<void>;
   /**
    * Open a file as raw bytes (used by import — docx is a zip, .doc needs magic
    * sniffing, and binary .doc needs a text scan; text formats decode from the

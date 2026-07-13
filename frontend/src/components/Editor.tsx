@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { getSearchQuery, search } from "@codemirror/search";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
@@ -23,6 +23,7 @@ import {
 } from "@codemirror/state";
 import { tags } from "@lezer/highlight";
 import { FindReplaceBar } from "@/components/FindReplaceBar";
+import { ImageContextMenu, type ImageMenuState } from "@/components/ImageContextMenu";
 
 /**
  * Pasted/dropped images are embedded as `![](data:…)` so they render in the
@@ -291,6 +292,38 @@ function scanImageRanges(state: EditorState): ImgRange[] {
   return ranges;
 }
 
+/**
+ * Resolve the markdown `Image` node whose range contains `pos`, returning its
+ * URL span + alt text. Powers right-click save on REMOTE-URL images, which
+ * render as plain `![alt](url)` text (no <img>). Data-URL images render as card
+ * widgets exposing a real <img>, so the editor's contextmenu handler reads
+ * those straight off the DOM and only falls back to this for the text case.
+ */
+function imageNodeAt(
+  state: EditorState,
+  pos: number,
+): { urlFrom: number; urlTo: number; alt: string } | null {
+  let found: { urlFrom: number; urlTo: number; alt: string } | null = null;
+  syntaxTree(state).iterate({
+    from: pos,
+    to: pos,
+    enter: (ref) => {
+      if (ref.name !== "Image") return;
+      const urlNode = ref.node.getChild("URL");
+      if (!urlNode) return;
+      const full = state.doc.sliceString(ref.from, ref.to);
+      const altMatch = /^!\[([\s\S]*)\]\(/.exec(full);
+      found = {
+        urlFrom: urlNode.from,
+        urlTo: urlNode.to,
+        alt: altMatch ? altMatch[1] : "",
+      };
+      return false; // found it — no need to descend into the image's children
+    },
+  });
+  return found;
+}
+
 /** Build the decoration set. Block decorations MUST come from a state field,
  *  not a view plugin (CodeMirror throws otherwise), so this is exposed via
  *  `EditorView.decorations.from(imageDecorations)`. */
@@ -472,6 +505,56 @@ export function Editor({
   // The find/replace bar registers its live-update handler here.
   const frCallbacks = useRef<{ onUpdate?: (u: ViewUpdate) => void }>({});
 
+  // Right-click image → shared save menu (same one the preview uses). Card
+  // (data-URL) images expose a real <img>; remote-URL images are plain text and
+  // are resolved through the syntax tree. Plain browser listener on the wrapper
+  // so it fires for both the rendered cards and the text tokens.
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const [imgMenu, setImgMenu] = useState<ImageMenuState | null>(null);
+  const closeImgMenu = useCallback(() => setImgMenu(null), []);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const onContextmenu = (e: MouseEvent) => {
+      // 1) data-URL image → card widget with a real <img> (.cm-mdimg-thumb)
+      const cardImg = (e.target as HTMLElement | null)?.closest?.(
+        ".cm-mdimg-thumb",
+      ) as HTMLImageElement | null;
+      if (cardImg && cardImg.src) {
+        e.preventDefault();
+        setImgMenu({
+          src: cardImg.currentSrc || cardImg.src,
+          alt: cardImg.alt || "",
+          x: e.clientX,
+          y: e.clientY,
+        });
+        return;
+      }
+      // 2) remote-URL image → plain text token; resolve the Image node at pos
+      const view = viewRef.current;
+      if (!view) return;
+      const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
+      if (pos == null) {
+        setImgMenu(null);
+        return;
+      }
+      const img = imageNodeAt(view.state, pos);
+      if (!img) {
+        setImgMenu(null); // not on an image → native menu
+        return;
+      }
+      e.preventDefault();
+      setImgMenu({
+        src: view.state.doc.sliceString(img.urlFrom, img.urlTo),
+        alt: img.alt,
+        x: e.clientX,
+        y: e.clientY,
+      });
+    };
+    el.addEventListener("contextmenu", onContextmenu);
+    return () => el.removeEventListener("contextmenu", onContextmenu);
+  }, []);
+
   const extensions = useMemo(
     () => [
       EditorView.lineWrapping,
@@ -531,7 +614,10 @@ export function Editor({
   );
 
   return (
-    <div className="cm-app-editor min-h-0 flex-1 overflow-hidden bg-background">
+    <div
+      ref={wrapRef}
+      className="cm-app-editor min-h-0 flex-1 overflow-hidden bg-background"
+    >
       {fr.open && (
         <FindReplaceBar
           viewRef={viewRef}
@@ -571,6 +657,7 @@ export function Editor({
         }}
         spellCheck={false}
       />
+      <ImageContextMenu menu={imgMenu} onClose={closeImgMenu} />
     </div>
   );
 }

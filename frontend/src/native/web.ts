@@ -54,12 +54,14 @@ export const webNative: Native = {
     if (htmlFallback) await webNative.copyWeChatHTML(htmlFallback);
   },
 
-  async saveBytes(bytes: Uint8Array, defaultName: string): Promise<void> {
+  async saveBytes(
+    bytes: Uint8Array,
+    defaultName: string,
+    mime = "application/octet-stream",
+  ): Promise<void> {
     // new Uint8Array(bytes) yields a fresh ArrayBuffer-backed copy, which
     // satisfies BlobPart under TS's typed-array generics (no behavior change).
-    const blob = new Blob([new Uint8Array(bytes)], {
-      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    });
+    const blob = new Blob([new Uint8Array(bytes)], { type: mime });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

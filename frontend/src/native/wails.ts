@@ -43,9 +43,10 @@ export const wailsNative: Native = {
     await a.SaveTextFile(content, defaultName);
   },
 
-  async saveBytes(bytes: Uint8Array, defaultName: string): Promise<void> {
+  async saveBytes(bytes: Uint8Array, defaultName: string, _mime?: string): Promise<void> {
     // The JS↔Go bridge marshals strings cleanly; pass the bytes as base64 and
     // let Go decode before writing (avoids truncation on some Wails versions).
+    // `mime` is a web-only concern; Go infers the type from the file extension.
     const a = app();
     if (!a) throw new Error("Wails 绑定不可用");
     await a.SaveBytesFile(bytesToBase64(bytes), defaultName);

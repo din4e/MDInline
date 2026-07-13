@@ -82,7 +82,11 @@ export function useDocActions({ markdown, theme, onImportMd, onToast }: Args): D
       // the user actually exports .docx, keeping the initial page load light.
       const { inlinedHtmlToDocx } = await import("@/lib/word/docx");
       const bytes = await inlinedHtmlToDocx(inlined);
-      await native.saveBytes(bytes, "article.docx");
+      await native.saveBytes(
+        bytes,
+        "article.docx",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      );
       onToast("Word(.docx)已导出");
     });
   }, [run, markdown, theme, onToast]);
