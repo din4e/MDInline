@@ -141,12 +141,13 @@ docker compose up -d
 
 ## Markdown 语法支持
 
-基于 markdown-it(`html: false` + `linkify`)+ highlight.js 语法高亮:
+基于 markdown-it(`html: true` + `linkify`)+ highlight.js 语法高亮:
 
 - **支持**:标题、**加粗**、*斜体*、~~删除线~~、[链接](https://weixin.qq.com)、图片、有序 / 无序列表、行内与围栏代码、引用、分隔线、表格、链接自动识别。
+- **原始 HTML**:Markdown 里可直接写 HTML 标签并照常渲染——公众号风格的 `<p align="center"><img …>` 居中图片、`data:` base64 内嵌图片、内联 `style`、`<div>` 包裹等。
 - **代码高亮**:围栏代码块用 ` ```js ` / ` ```go ` 指定语言,或不写让其自动识别(支持语言见 [highlight.js demo](https://highlightjs.org/static/demo/))。
 - **不支持**:任务列表(`- [x]`)、脚注、数学公式、流程图等(`lib/md.ts` 未加载相关插件,如需可自行扩展)。
-- **安全**:Markdown 里的**原始 HTML 会被转义**(`html: false`),不能内嵌 `<script>` 或任意标签。
+- **安全**:预览 iframe 为 `sandbox="allow-same-origin"`(无 `allow-scripts`),原始 HTML 里的 `<script>` / `onerror` 等不会在预览执行;粘贴进公众号时其编辑器也会二次过滤。
 
 ---
 

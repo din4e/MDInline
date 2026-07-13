@@ -95,7 +95,8 @@ export function Preview({
         className="block size-full border-0 bg-muted/70"
         title="预览"
         srcDoc={doc}
-        // No allow-scripts: the rendered doc is our own sanitized HTML.
+        // No allow-scripts: md.ts renders raw HTML (html:true), so this sandbox
+        // is what keeps any user-authored <script>/onerror inert in the preview.
         sandbox="allow-same-origin"
       />
       <ImageContextMenu menu={menu} onClose={closeMenu} />

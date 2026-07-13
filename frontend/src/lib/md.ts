@@ -1,15 +1,22 @@
 /**
  * markdown-it instance with highlight.js syntax highlighting.
  *
- * `html: false` so raw HTML in user input is escaped (no <script> injection in
- * the preview). The highlight callback returns just the colored spans; markdown-it
- * wraps them as <pre><code class="language-X">…</code></pre>.
+ * `html: true` so raw HTML in user input is RENDERED, not escaped — this lets
+ * users drop in 公众号-style snippets like `<p align="center"><img …></p>`
+ * (centered images, base64 data-URI `<img>`, inline `style`, `<div>` wrappers, …).
+ * The security boundary is the PREVIEW iframe (Preview.tsx): it runs
+ * `sandbox="allow-same-origin"` with NO `allow-scripts`, so any `<script>` /
+ * `onerror=` / `<iframe>` in user content stays inert in the preview, and 公众号's
+ * own editor sanitizes whatever gets pasted. (`.mdcss p` deliberately sets no
+ * `text-align`, so a `<p align="center">` hint is not overridden after inlining.)
+ * The highlight callback returns just the colored spans; markdown-it wraps them
+ * as <pre><code class="language-X">…</code></pre>.
  */
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 
 export const md: MarkdownIt = new MarkdownIt({
-  html: false,
+  html: true,
   linkify: true,
   typographer: false,
   breaks: false,
