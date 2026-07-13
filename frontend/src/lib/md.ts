@@ -48,6 +48,27 @@ md.normalizeLink = (url: string) =>
   baseNormalizeLink(url.replace(/：/g, ":").replace(/／/g, "/"));
 
 /**
+ * markdown-it's default `validateLink` whitelists `data:` to only
+ * `data:image/(gif|png|jpeg|webp);` — so `![雷达图](data:image/svg+xml;base64,…)`
+ * FAILS validation and is emitted as flat text instead of an `<img>` (the
+ * "无法渲染" for inline SVG charts). We additionally allow `data:image/svg+xml;`.
+ *
+ * Safety: an SVG reached via `<img src="data:image/svg+xml;…">` is loaded in the
+ * image (non-scripting) context — it cannot run `<script>`/`onload` the way an
+ * inline `<svg>` or `<object>` could — so this stays within the same security
+ * story as the built-in `data:image/*` allowlist and is still bounded by the
+ * preview iframe's `sandbox="allow-same-origin"` (no `allow-scripts`). 公众号
+ * itself strips SVG on paste, so this is a PREVIEW-only affordance; for content
+ * that must survive WeChat, rasterize the SVG to a PNG data URI instead.
+ *
+ * Prefer base64 (`;base64,`) over a URL-encoded SVG: with the raw form, `linkify`
+ * can match the `http://www.w3.org/2000/svg` xmlns inside the payload.
+ */
+const baseValidateLink = md.validateLink.bind(md);
+md.validateLink = (url: string) =>
+  /^data:image\/svg\+xml;/i.test(url.trim()) || baseValidateLink(url);
+
+/**
  * Wrap every list item's CONTENT in a `<section>` — i.e. emit
  * `<li><section>…</section></li>` instead of `<li>…</li>`.
  *
@@ -72,9 +93,9 @@ md.renderer.rules.list_item_close = () => `</section></li>`;
  * Self-contained 320×80 PNG placeholder for the specimen image. `via.placeholder.com`
  * has been offline since 2023, so every specimen card showed a broken-image icon.
  * A `data:image/png;base64` URL renders with no network, works in the offline
- * Wails desktop build, AND passes markdown-it's default `validateLink` (which
- * only allows `data:image/(gif|png|jpeg|webp);` — an SVG data URI would render
- * as flat text, and the `http://` in an SVG's xmlns trips the linkifier too).
+ * Wails desktop build, and (unlike SVG) reliably survives paste into 公众号.
+ * SVG data URIs are now allowed too via the `validateLink` override above, but
+ * we keep PNG here precisely because SVG gets stripped on WeChat paste.
  */
 const SPECIMEN_PLACEHOLDER =
   "data:image/png;base64," +
