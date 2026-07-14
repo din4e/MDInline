@@ -22,6 +22,7 @@ import {
   StateField,
 } from "@codemirror/state";
 import { tags } from "@lezer/highlight";
+import { BackToTopButton, BACK_TO_TOP_THRESHOLD } from "@/components/BackToTopButton";
 import { FindReplaceBar } from "@/components/FindReplaceBar";
 import { ImageContextMenu, type ImageMenuState } from "@/components/ImageContextMenu";
 
@@ -512,6 +513,8 @@ export function Editor({
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [imgMenu, setImgMenu] = useState<ImageMenuState | null>(null);
   const closeImgMenu = useCallback(() => setImgMenu(null), []);
+  /** Whether the editor is near the top (controls the back-to-top button). */
+  const [atTop, setAtTop] = useState(true);
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -553,6 +556,26 @@ export function Editor({
     };
     el.addEventListener("contextmenu", onContextmenu);
     return () => el.removeEventListener("contextmenu", onContextmenu);
+  }, []);
+
+  // Back-to-top: the scroller is CodeMirror's `.cm-scroller`, a descendant of
+  // this wrapper. `scroll` doesn't bubble, but it propagates in the capture
+  // phase, so a capture listener on the wrapper catches it — no need to wait
+  // for the (async-created) view. The handler reads `view.scrollDOM.scrollTop`
+  // at event time, so it works as soon as the view exists; before that it just
+  // reports "at top".
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const update = () => {
+      const scroller = viewRef.current?.scrollDOM;
+      setAtTop((scroller?.scrollTop ?? 0) < BACK_TO_TOP_THRESHOLD);
+    };
+    el.addEventListener("scroll", update, true);
+    return () => el.removeEventListener("scroll", update, true);
+  }, []);
+  const scrollToTop = useCallback(() => {
+    viewRef.current?.scrollDOM?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   const extensions = useMemo(
@@ -616,7 +639,7 @@ export function Editor({
   return (
     <div
       ref={wrapRef}
-      className="cm-app-editor min-h-0 flex-1 overflow-hidden bg-background"
+      className="cm-app-editor relative min-h-0 flex-1 overflow-hidden bg-background"
     >
       {fr.open && (
         <FindReplaceBar
@@ -658,6 +681,7 @@ export function Editor({
         spellCheck={false}
       />
       <ImageContextMenu menu={imgMenu} onClose={closeImgMenu} />
+      <BackToTopButton visible={!atTop} onClick={scrollToTop} label="返回编辑器顶部" />
     </div>
   );
 }

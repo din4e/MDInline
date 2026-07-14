@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BackToTopButton, BACK_TO_TOP_THRESHOLD } from "@/components/BackToTopButton";
 import { ImageContextMenu, type ImageMenuState } from "@/components/ImageContextMenu";
 
 export function Preview({
@@ -27,6 +28,11 @@ export function Preview({
 
   const [menu, setMenu] = useState<ImageMenuState | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
+  /** Whether the preview is near the top (controls the back-to-top button). */
+  const [atTop, setAtTop] = useState(true);
+  const scrollToTop = useCallback(() => {
+    localRef.current?.contentWindow?.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   /**
    * Right-click on an image → open the shared save menu. The preview iframe is
@@ -60,8 +66,18 @@ export function Preview({
       });
     };
 
-    const onLoad = () =>
-      iframe.contentDocument?.addEventListener("contextmenu", onContextmenu, true);
+    const onScroll = () => {
+      setAtTop((iframe.contentWindow?.scrollY ?? 0) < BACK_TO_TOP_THRESHOLD);
+    };
+    const onLoad = () => {
+      const doc = iframe.contentDocument;
+      if (!doc) return;
+      doc.addEventListener("contextmenu", onContextmenu, true);
+      // A freshly loaded doc starts at the top; re-arm the button state and
+      // watch scroll (same doc-level listener pattern useScrollSync uses).
+      setAtTop(true);
+      doc.addEventListener("scroll", onScroll, { passive: true });
+    };
     iframe.addEventListener("load", onLoad);
     onLoad(); // the first doc may already be loaded before we wired `load`
     return () => iframe.removeEventListener("load", onLoad);
@@ -89,7 +105,7 @@ export function Preview({
   }, [menu]);
 
   return (
-    <div className="min-h-0 flex-1 bg-muted/70">
+    <div className="relative min-h-0 flex-1 bg-muted/70">
       <iframe
         ref={setIframe}
         className="block size-full border-0 bg-muted/70"
@@ -100,6 +116,7 @@ export function Preview({
         sandbox="allow-same-origin"
       />
       <ImageContextMenu menu={menu} onClose={closeMenu} />
+      <BackToTopButton visible={!atTop} onClick={scrollToTop} label="返回预览顶部" />
     </div>
   );
 }
