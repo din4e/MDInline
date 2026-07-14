@@ -34,6 +34,7 @@ ThemeConfig ──generateCSS──▶ CSS ┘
 ## 功能
 
 - 实时编辑 + 实时渲染(防抖 150ms),编辑器自带**字数统计**。
+- 编辑器 / 预览**一键返回顶部**:长文档滚到底部后,左下角按钮一键平滑回顶(开启「滚动跟随」时双栏同步回顶)。
 - 可视化样式面板:**文字 / 间距 / 标题 / 代码 / 图片** + **自定义 CSS** 覆盖。
 - 代码语法高亮(highlight.js)随主题一起内联,粘贴进公众号仍带配色。
 - **模板市场**:14 套精选排版(极简 / 商务 / 文艺 / 科技 / 暗色 / 活力 6 类),卡片预览 + 一键套用。
@@ -78,14 +79,23 @@ npm run preview      # 用 serve 托管 out/
 
 ## Docker(生产部署)
 
-多阶段构建:`node:20-alpine` 编译静态导出 → `nginx:alpine` 托管。最终镜像约 **~80MB**(nginx 基础镜像 ~45MB + 静态产物 ~35MB,含 docx/mammoth/highlight.js/CodeMirror 等前端依赖),无服务端运行时。
+镜像已发布到 Docker Hub [`din4e/mdinline`](https://hub.docker.com/r/din4e/mdinline)。多阶段构建(`node:20-alpine` 编译静态导出 → `nginx:alpine` 托管),最终镜像约 **~80MB**(nginx 基础镜像 ~45MB + 静态产物 ~35MB,含 docx/mammoth/highlight.js/CodeMirror 等前端依赖),无服务端运行时。
+
+直接拉取运行(最简):
 
 ```bash
-docker build -t mdinline .
-docker run -d -p 8080:80 --name mdinline mdinline   # → http://localhost:8080
+docker run -d -p 8080:80 --name mdinline din4e/mdinline   # → http://localhost:8080
 ```
 
-或用 docker compose:
+指定版本(`:v0.1.2`)或自行构建:
+
+```bash
+docker run -d -p 8080:80 --name mdinline din4e/mdinline:v0.1.2
+docker build -t mdinline .                                 # 自行构建
+docker run -d -p 8080:80 --name mdinline mdinline
+```
+
+或用 docker compose(默认从本地 Dockerfile 构建):
 
 ```bash
 docker compose up -d
