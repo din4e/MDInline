@@ -22,6 +22,8 @@ import { useDebounced } from "@/hooks/useDebounced";
 import { useDocActions } from "@/hooks/useDocActions";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { TabBar } from "@/components/TabBar";
+import { FileTreeSidebar } from "@/components/FileTreeSidebar";
+import { useFileTree } from "@/hooks/useFileTree";
 import { titleFromFilename } from "@/lib/workspace";
 import { useHotkey } from "@/hooks/useHotkey";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -188,6 +190,7 @@ export default function Page() {
     markSaved,
     renameTitle,
   } = useWorkspace();
+  const fileTree = useFileTree();
   // Kept as a local so the rest of the body (debounce/render/actions/chars) reads
   // the active tab's content without per-line edits.
   const markdown = activeDoc?.content ?? "";
@@ -261,20 +264,26 @@ export default function Page() {
     onToast: notify,
   });
 
-  const openFolder = useCallback(async () => {
-    try {
-      const files = await native.openMarkdownFolder();
-      if (!files) return; // cancelled
-      if (files.length === 0) {
-        notify("该文件夹下没有 .md 文件");
+  // Lazy-load a file from the tree: switch to its tab if already open, else read
+  // its content and open a new tab. Marks the file active so the tree highlights it.
+  const openFileFromTree = useCallback(
+    async (path: string) => {
+      const existing = docs.find((d) => d.path === path);
+      if (existing) {
+        switchTo(existing.id);
+        fileTree.setActive(path);
         return;
       }
-      openMany(files.map((f) => ({ name: f.name, path: f.path, content: f.content })));
-      notify(`已打开 ${files.length} 个文件`);
-    } catch (e) {
-      notify(`打开失败:${e instanceof Error ? e.message : String(e)}`);
-    }
-  }, [openMany, notify]);
+      try {
+        const content = await native.readTextFile(path);
+        openMany([{ name: path.split(/[\\/]/).pop() || path, path, content }]);
+        fileTree.setActive(path);
+      } catch (e) {
+        notify(`打开失败:${e instanceof Error ? e.message : String(e)}`);
+      }
+    },
+    [docs, switchTo, openMany, fileTree, notify],
+  );
 
   const openFiles = useCallback(async () => {
     try {
@@ -440,7 +449,7 @@ export default function Page() {
             <XiaohongshuIcon className="size-3.5" />
           </HeaderLink>
           <Separator orientation="vertical" className="hidden h-6 shrink-0 sm:block" />
-          <Toolbar actions={actions} onOpenFolder={openFolder} onOpenFiles={openFiles} />
+          <Toolbar actions={actions} onOpenFolder={isDesktopView ? fileTree.openTree : undefined} onOpenFiles={openFiles} />
           <ThemeToggle />
         </div>
       </header>
@@ -493,7 +502,15 @@ export default function Page() {
           </section>
         </main>
       ) : isDesktopView ? (
-        <main ref={layout.containerRef} className="relative flex min-h-0 flex-1 overflow-hidden bg-border">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <FileTreeSidebar
+            root={fileTree.root}
+            activePath={fileTree.activePath}
+            loading={fileTree.loading}
+            onOpenFile={openFileFromTree}
+            onClose={fileTree.clear}
+          />
+          <main ref={layout.containerRef} className="relative flex min-h-0 flex-1 overflow-hidden bg-border">
           {layout.collapse.editor ? (
             <SideEdgeTab index="01" title="Markdown 编辑" side="left" onExpand={() => layout.toggle("editor")} />
           ) : (
@@ -555,6 +572,7 @@ export default function Page() {
             </>
           )}
         </main>
+        </div>
       ) : (
         // Tablet (720–1100px): 2-col grid, style spans the full second row.
         <main className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-px overflow-hidden bg-border">
