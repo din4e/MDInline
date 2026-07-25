@@ -5,7 +5,7 @@
  * is only selected when `window.go` is present (see ./index.ts), so it's safe to
  * bundle into the web build too.
  */
-import type { Native } from "./types";
+import type { Native, TreeNode } from "./types";
 
 /** The generated/wails-injected binding namespace. */
 function app(): {
@@ -19,6 +19,8 @@ function app(): {
   OpenTextFiles(): Promise<{ name: string; path: string; content: string }[]>;
   SaveTextToPath(content: string, path: string): Promise<void>;
   SaveTextAs(content: string, defaultName: string): Promise<string>;
+  OpenFolderTree(): Promise<TreeNode>;
+  ReadTextFile(path: string): Promise<string>;
 } | undefined {
   return (window as unknown as { go?: { main?: { App?: any } } }).go?.main?.App;
 }
@@ -95,6 +97,18 @@ export const wailsNative: Native = {
     if (!a) throw new Error("Wails 绑定不可用");
     const p = await a.SaveTextAs(content, defaultName);
     return p ? { path: p } : null;
+  },
+
+  async openFolderTree(): Promise<TreeNode | null> {
+    const a = app();
+    if (!a) throw new Error("Wails 绑定不可用");
+    return (await a.OpenFolderTree()) ?? null;
+  },
+
+  async readTextFile(path: string): Promise<string> {
+    const a = app();
+    if (!a) throw new Error("Wails 绑定不可用");
+    return await a.ReadTextFile(path);
   },
 };
 

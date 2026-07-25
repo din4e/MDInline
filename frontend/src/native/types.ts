@@ -1,3 +1,11 @@
+/** One node of the folder tree returned by openFolderTree. */
+export type TreeNode = {
+  name: string;
+  path: string;
+  kind: "dir" | "file";
+  children?: TreeNode[];
+};
+
 /** The shape both web and Wails native modules implement. */
 export interface Native {
   /** True when running inside the Wails desktop webview. */
@@ -70,4 +78,18 @@ export interface Native {
    * - Web:   best-effort download; returns { path: defaultName } (not a real disk path).
    */
   saveTextAs(content: string, defaultName: string): Promise<{ path: string } | null>;
+  /**
+   * Open a folder and return it as a single root TreeNode (recursive tree of
+   * subdirs + .md/.markdown files, NO file content). null = cancelled. Click a
+   * file node → readTextFile(path) to lazy-load its content.
+   * - Wails: Go `OpenFolderTree` (directory picker + buildFolderTree).
+   * - Web:   <input webkitdirectory> → build tree from webkitRelativePath.
+   */
+  openFolderTree(): Promise<TreeNode | null>;
+  /**
+   * Read a single file's UTF-8 text by path (lazy load on tree click).
+   * - Wails: Go `ReadTextFile` (absolute path).
+   * - Web:   looks up the File cached during openFolderTree (keyed by webkitRelativePath).
+   */
+  readTextFile(path: string): Promise<string>;
 }
