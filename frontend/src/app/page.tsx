@@ -20,12 +20,14 @@ import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
 import { useDebounced } from "@/hooks/useDebounced";
 import { useDocActions } from "@/hooks/useDocActions";
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { TabBar } from "@/components/TabBar";
+import { titleFromFilename } from "@/lib/workspace";
 import { useHotkey } from "@/hooks/useHotkey";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { usePaneLayout } from "@/hooks/usePaneLayout";
 import { useScrollSync } from "@/hooks/useScrollSync";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
-import { SAMPLE_MARKDOWN } from "@/lib/md";
 import { buildPreviewDoc, render } from "@/lib/pipeline";
 import {
   DEFAULT_THEME,
@@ -35,7 +37,7 @@ import {
   type DeepPartial,
   type ThemeConfig,
 } from "@/lib/theme";
-import { isWails } from "@/native";
+import { isWails, native } from "@/native";
 import { cn } from "@/lib/utils";
 
 const paneClass = "flex min-h-0 min-w-0 flex-col overflow-hidden bg-background";
@@ -174,7 +176,21 @@ function HeaderButton({ onClick, label, text, children }: { onClick: () => void;
 }
 
 export default function Page() {
-  const [markdown, setMarkdown] = useState(SAMPLE_MARKDOWN);
+  const {
+    docs,
+    activeId,
+    activeDoc,
+    openMany,
+    openUntitled,
+    close: closeTab,
+    switchTo,
+    updateActive,
+    markSaved,
+    renameTitle,
+  } = useWorkspace();
+  // Kept as a local so the rest of the body (debounce/render/actions/chars) reads
+  // the active tab's content without per-line edits.
+  const markdown = activeDoc?.content ?? "";
   const [theme, setTheme] = useState<ThemeConfig>(DEFAULT_THEME);
   const [hydrated, setHydrated] = useState(false);
   const [wails, setWails] = useState(false);
@@ -203,11 +219,10 @@ export default function Page() {
   useScrollSync(getEditorScroller, getPreviewIframe, syncScroll && !isMobileView);
 
   // Load persisted markdown + theme on mount (avoids SSR hydration mismatch).
+  // Load persisted theme on mount (workspace loads itself via useWorkspace).
   useEffect(() => {
     try {
-      const m = localStorage.getItem("mdcss.markdown");
       const t = localStorage.getItem("mdcss.theme");
-      if (m) setMarkdown(m);
       if (t) setTheme(mergeTheme(JSON.parse(t)));
     } catch {
       /* ignore */
@@ -215,15 +230,6 @@ export default function Page() {
     setHydrated(true);
     setWails(isWails);
   }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      localStorage.setItem("mdcss.markdown", markdown);
-    } catch {
-      /* ignore */
-    }
-  }, [markdown, hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -251,12 +257,68 @@ export default function Page() {
   const actions = useDocActions({
     markdown,
     theme,
-    onImportMd: (content) => setMarkdown(content),
+    onImportMd: (content, name) => openMany([{ name, content }]),
     onToast: notify,
   });
 
+  const openFolder = useCallback(async () => {
+    try {
+      const files = await native.openMarkdownFolder();
+      if (!files) return; // cancelled
+      if (files.length === 0) {
+        notify("该文件夹下没有 .md 文件");
+        return;
+      }
+      openMany(files.map((f) => ({ name: f.name, path: f.path, content: f.content })));
+      notify(`已打开 ${files.length} 个文件`);
+    } catch (e) {
+      notify(`打开失败:${e instanceof Error ? e.message : String(e)}`);
+    }
+  }, [openMany, notify]);
+
+  const openFiles = useCallback(async () => {
+    try {
+      const files = await native.openTextFiles();
+      if (!files || files.length === 0) return; // cancelled
+      openMany(files.map((f) => ({ name: f.name, path: f.path, content: f.content })));
+      notify(`已打开 ${files.length} 个文件`);
+    } catch (e) {
+      notify(`打开失败:${e instanceof Error ? e.message : String(e)}`);
+    }
+  }, [openMany, notify]);
+
+  const saveActive = useCallback(async () => {
+    const doc = activeDoc;
+    if (!doc) return;
+    try {
+      if (doc.path) {
+        await native.saveTextToPath(doc.content, doc.path);
+        markSaved(doc.id);
+        notify("已保存");
+      } else {
+        const res = await native.saveTextAs(doc.content, `${doc.title || "未命名"}.md`);
+        if (res?.path) {
+          markSaved(doc.id, res.path);
+          renameTitle(doc.id, titleFromFilename(res.path));
+          notify("已保存");
+        }
+      }
+    } catch (e) {
+      notify(`保存失败:${e instanceof Error ? e.message : String(e)}`);
+    }
+  }, [activeDoc, markSaved, renameTitle, notify]);
+
+  const handleCloseTab = useCallback(
+    (id: string) => {
+      const d = docs.find((x) => x.id === id);
+      if (d?.dirty && !window.confirm(`「${d.title}」有未保存的改动,确认关闭?`)) return;
+      closeTab(id);
+    },
+    [docs, closeTab],
+  );
+
   // Global keyboard shortcuts (disabled while an action is in flight).
-  useHotkey({ key: "s" }, actions.exportMd, !actions.busy);
+  useHotkey({ key: "s" }, saveActive, !actions.busy);
   useHotkey({ key: "e" }, actions.exportHtml, !actions.busy);
   useHotkey({ key: "o" }, actions.importFile, !actions.busy);
   useHotkey({ key: "d" }, actions.exportDocx, !actions.busy);
@@ -317,7 +379,7 @@ export default function Page() {
 
   // Pane bodies — defined once, reused across desktop / tablet / mobile layouts.
   const editorCell = (
-    <Editor value={markdown} onChange={setMarkdown} onToast={notify} editorRef={cmRef} />
+    <Editor value={markdown} onChange={updateActive} onToast={notify} editorRef={cmRef} />
   );
   const previewCell = <Preview doc={previewDoc} iframeRef={previewIframeRef} />;
   const styleCell = <StylePanel theme={theme} update={update} />;
@@ -378,10 +440,18 @@ export default function Page() {
             <XiaohongshuIcon className="size-3.5" />
           </HeaderLink>
           <Separator orientation="vertical" className="hidden h-6 shrink-0 sm:block" />
-          <Toolbar actions={actions} />
+          <Toolbar actions={actions} onOpenFolder={openFolder} onOpenFiles={openFiles} />
           <ThemeToggle />
         </div>
       </header>
+
+      <TabBar
+        docs={docs}
+        activeId={activeId}
+        onSelect={switchTo}
+        onClose={handleCloseTab}
+        onNew={openUntitled}
+      />
 
       {isMobileView ? (
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
