@@ -45,4 +45,29 @@ export interface Native {
    *  <input type=file> (Web). Distinct from openBytes so each gets its own
    *  dialog filter (text/JSON vs. the document-import filter). */
   openText(accept: string): Promise<{ name: string; content: string } | null>;
+  /**
+   * Open a folder and return every top-level .md/.markdown file as
+   * {name, path, content}. null = cancelled; [] = folder chosen but empty.
+   * - Wails: Go `OpenMarkdownFolder` (directory picker + readMarkdownFiles).
+   * - Web:   <input type=file webkitdirectory> (path is webkitRelativePath).
+   */
+  openMarkdownFolder(): Promise<{ name: string; path: string; content: string }[] | null>;
+  /**
+   * Multi-select markdown/text files → {name, path, content}[]. null/empty = cancelled.
+   * - Wails: Go `OpenTextFiles` (OpenMultipleFilesDialog; path is absolute).
+   * - Web:   <input type=file multiple> (path is the bare filename).
+   */
+  openTextFiles(): Promise<{ name: string; path: string; content: string }[] | null>;
+  /**
+   * Write content to an absolute path with NO dialog (Ctrl+S save-back).
+   * - Wails: Go `SaveTextToPath` (writes the file).
+   * - Web:   no filesystem access — falls back to a download named after `path`.
+   */
+  saveTextToPath(content: string, path: string): Promise<void>;
+  /**
+   * Save-as: show a dialog, write the file, return the chosen path (null = cancelled).
+   * - Wails: Go `SaveTextAs` (returns the chosen path or "").
+   * - Web:   best-effort download; returns { path: defaultName } (not a real disk path).
+   */
+  saveTextAs(content: string, defaultName: string): Promise<{ path: string } | null>;
 }

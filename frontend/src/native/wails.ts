@@ -15,6 +15,10 @@ function app(): {
   SaveBytesFile(b64: string, defaultName: string): Promise<void>;
   OpenBytesFile(): Promise<{ name: string; contentB64: string }>;
   OpenTextFile(): Promise<{ name: string; content: string }>;
+  OpenMarkdownFolder(): Promise<{ name: string; path: string; content: string }[]>;
+  OpenTextFiles(): Promise<{ name: string; path: string; content: string }[]>;
+  SaveTextToPath(content: string, path: string): Promise<void>;
+  SaveTextAs(content: string, defaultName: string): Promise<string>;
 } | undefined {
   return (window as unknown as { go?: { main?: { App?: any } } }).go?.main?.App;
 }
@@ -66,6 +70,31 @@ export const wailsNative: Native = {
     if (!a) throw new Error("Wails 绑定不可用");
     const res = await a.OpenTextFile();
     return res ? { name: res.name, content: res.content } : null;
+  },
+
+  async openMarkdownFolder(): Promise<{ name: string; path: string; content: string }[] | null> {
+    const a = app();
+    if (!a) throw new Error("Wails 绑定不可用");
+    return (await a.OpenMarkdownFolder()) ?? null;
+  },
+
+  async openTextFiles(): Promise<{ name: string; path: string; content: string }[] | null> {
+    const a = app();
+    if (!a) throw new Error("Wails 绑定不可用");
+    return (await a.OpenTextFiles()) ?? null;
+  },
+
+  async saveTextToPath(content: string, path: string): Promise<void> {
+    const a = app();
+    if (!a) throw new Error("Wails 绑定不可用");
+    await a.SaveTextToPath(content, path);
+  },
+
+  async saveTextAs(content: string, defaultName: string): Promise<{ path: string } | null> {
+    const a = app();
+    if (!a) throw new Error("Wails 绑定不可用");
+    const p = await a.SaveTextAs(content, defaultName);
+    return p ? { path: p } : null;
   },
 };
 
