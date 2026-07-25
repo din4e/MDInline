@@ -17,6 +17,8 @@
     "dev": "next dev --webpack",
     "build": "node scripts/build.mjs",
     "preview": "npx --yes serve out",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -58,6 +60,7 @@
     "@types/react-dom": "^19",
     "@types/turndown": "^5.0.6",
     "cross-env": "^10.1.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }
