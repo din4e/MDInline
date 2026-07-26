@@ -1,5 +1,9 @@
 /** Browser-side native implementation (used when NOT running in Wails). */
-import type { Native } from "./types";
+import type { Native, TreeNode } from "./types";
+
+/** Files collected during the last openFolderTree, keyed by webkitRelativePath,
+ * so readTextFile can lazy-load on click without re-picking. */
+const treeFileCache = new Map<string, File>();
 
 export const webNative: Native = {
   isWails: false,
@@ -84,6 +88,52 @@ export const webNative: Native = {
     if (!file) return null;
     return { name: file.name, content: await file.text() };
   },
+
+  async openMarkdownFolder(): Promise<{ name: string; path: string; content: string }[] | null> {
+    // webkitdirectory recursively lists every file; we keep only .md/.markdown.
+    const files = await pickFiles("", true);
+    if (!files || files.length === 0) return null;
+    const out: { name: string; path: string; content: string }[] = [];
+    for (const f of files) {
+      const rel = (f as File & { webkitRelativePath?: string }).webkitRelativePath ?? f.name;
+      if (!/\.(md|markdown)$/i.test(f.name)) continue;
+      out.push({ name: f.name, path: rel, content: await f.text() });
+    }
+    return out;
+  },
+
+  async openTextFiles(): Promise<{ name: string; path: string; content: string }[] | null> {
+    const files = await pickFiles(".md,.markdown,.txt", false);
+    if (!files || files.length === 0) return null;
+    const out: { name: string; path: string; content: string }[] = [];
+    for (const f of files) out.push({ name: f.name, path: f.name, content: await f.text() });
+    return out;
+  },
+
+  async saveTextToPath(content: string, path: string): Promise<void> {
+    // Browsers can't write to an arbitrary disk path. Best effort: download using
+    // the basename so at least the content isn't lost.
+    const name = path.split(/[\\/]/).pop() || "untitled.md";
+    await webNative.saveText(content, name, "text/markdown");
+  },
+
+  async saveTextAs(content: string, defaultName: string): Promise<{ path: string } | null> {
+    await webNative.saveText(content, defaultName, "text/markdown");
+    return { path: defaultName };
+  },
+
+  async openFolderTree(): Promise<TreeNode | null> {
+    // webkitdirectory lists every file under the chosen folder (recursively).
+    const files = await pickFiles("", true);
+    if (!files || files.length === 0) return null;
+    return buildTreeFromFiles(files);
+  },
+
+  async readTextFile(path: string): Promise<string> {
+    const f = treeFileCache.get(path);
+    if (!f) throw new Error(`文件不在缓存中:${path}`);
+    return await f.text();
+  },
 };
 
 /**
@@ -123,6 +173,86 @@ function pickFile(accept: string): Promise<File | null> {
     window.addEventListener("focus", onWindowFocus);
     input.click();
   });
+}
+
+/**
+ * Multi-file (and optionally directory) picker — the multi/webkitdirectory sibling
+ * of pickFile. Same cancel-via-window-focus heuristic so a dismissed dialog never
+ * leaves the caller's busy flag locked.
+ */
+function pickFiles(accept: string, directory: boolean): Promise<File[] | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = true;
+    if (accept) input.accept = accept;
+    if (directory) {
+      // webkitdirectory is non-standard but the only cross-browser folder picker.
+      (input as HTMLInputElement & { webkitdirectory: boolean }).webkitdirectory = true;
+    }
+
+    let settled = false;
+    const finish = (value: File[] | null) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("focus", onWindowFocus);
+      resolve(value);
+    };
+    const onWindowFocus = () => {
+      window.setTimeout(() => {
+        if (!settled && (!input.files || input.files.length === 0)) finish(null);
+      }, 500);
+    };
+
+    input.addEventListener("change", () => {
+      finish(input.files ? Array.from(input.files) : null);
+    });
+    window.addEventListener("focus", onWindowFocus);
+    input.click();
+  });
+}
+
+/**
+ * Build a recursive TreeNode tree from a File[] produced by a webkitdirectory
+ * picker. Each File's webkitRelativePath looks like "rootDir/sub/file.md"; the
+ * first segment is the chosen folder name (the root). .md/.markdown files become
+ * leaves (and are cached by relative path for readTextFile); directories are
+ * created on demand. Each directory's children are sorted dirs-first then alpha.
+ */
+function buildTreeFromFiles(files: File[]): TreeNode {
+  const relOf = (f: File) =>
+    (f as File & { webkitRelativePath?: string }).webkitRelativePath ?? f.name;
+  const rootName = relOf(files[0]).split("/")[0];
+  const root: TreeNode = { name: rootName, path: rootName, kind: "dir", children: [] };
+  const dirIndex = new Map<string, TreeNode>([[rootName, root]]);
+  const getOrCreateDir = (path: string): TreeNode => {
+    const existing = dirIndex.get(path);
+    if (existing) return existing;
+    const segs = path.split("/");
+    const node: TreeNode = { name: segs[segs.length - 1], path, kind: "dir", children: [] };
+    const parentPath = segs.slice(0, -1).join("/");
+    (dirIndex.get(parentPath) ?? root).children!.push(node);
+    dirIndex.set(path, node);
+    return node;
+  };
+  treeFileCache.clear();
+  for (const f of files) {
+    if (!/\.(md|markdown)$/i.test(f.name)) continue;
+    const rel = relOf(f);
+    treeFileCache.set(rel, f);
+    const segs = rel.split("/");
+    const parent = getOrCreateDir(segs.slice(0, -1).join("/"));
+    parent.children!.push({ name: f.name, path: rel, kind: "file" });
+  }
+  const sortNode = (n: TreeNode) => {
+    if (!n.children) return;
+    n.children.sort((a, b) =>
+      a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === "dir" ? -1 : 1,
+    );
+    n.children.forEach(sortNode);
+  };
+  sortNode(root);
+  return root;
 }
 
 /**
