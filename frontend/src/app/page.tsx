@@ -503,14 +503,20 @@ export default function Page() {
         </main>
       ) : isDesktopView ? (
         <div className="flex min-h-0 flex-1 overflow-hidden">
-          <FileTreeSidebar
-            root={fileTree.root}
-            activePath={fileTree.activePath}
-            loading={fileTree.loading}
-            onOpenFile={openFileFromTree}
-            onClose={fileTree.clear}
-          />
+          {!fileTree.collapsed && (
+            <FileTreeSidebar
+              root={fileTree.root}
+              activePath={fileTree.activePath}
+              loading={fileTree.loading}
+              onOpenFile={openFileFromTree}
+              onClose={fileTree.clear}
+              onCollapse={fileTree.toggleCollapsed}
+            />
+          )}
           <main ref={layout.containerRef} className="relative flex min-h-0 flex-1 overflow-hidden bg-border">
+          {fileTree.root && fileTree.collapsed && (
+            <SideEdgeTab index="📁" title={fileTree.rootName ?? "文件"} side="left" onExpand={fileTree.toggleCollapsed} />
+          )}
           {layout.collapse.editor ? (
             <SideEdgeTab index="01" title="Markdown 编辑" side="left" onExpand={() => layout.toggle("editor")} />
           ) : (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { native } from "@/native";
 import type { TreeNode } from "@/native/types";
 
@@ -9,9 +9,11 @@ export interface FileTreeApi {
   rootName: string | null;
   activePath: string | null;
   loading: boolean;
+  collapsed: boolean;
   openTree: () => Promise<void>;
   setActive: (path: string | null) => void;
   clear: () => void;
+  toggleCollapsed: () => void;
 }
 
 /**
@@ -21,10 +23,34 @@ export interface FileTreeApi {
  * is in flight. The hook does NOT load file content — page.tsx lazy-loads a
  * clicked file via native.readTextFile and pushes it into the workspace.
  */
+const COLLAPSED_KEY = "mdcss.filetree.collapsed.v1";
+
 export function useFileTree(): FileTreeApi {
   const [root, setRoot] = useState<TreeNode | null>(null);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Restore the sidebar collapse preference across restarts.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(COLLAPSED_KEY) === "1") setCollapsed(true);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((c) => {
+      const next = !c;
+      try {
+        localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
 
   const openTree = useCallback(async () => {
     setLoading(true);
@@ -33,6 +59,7 @@ export function useFileTree(): FileTreeApi {
       if (!r) return; // cancelled
       setRoot(r);
       setActivePath(null);
+      setCollapsed(false); // opening a folder shows the sidebar
     } finally {
       setLoading(false);
     }
@@ -48,8 +75,10 @@ export function useFileTree(): FileTreeApi {
     rootName: root?.name ?? null,
     activePath,
     loading,
+    collapsed,
     openTree,
     setActive: (path) => setActivePath(path),
     clear,
+    toggleCollapsed,
   };
 }
