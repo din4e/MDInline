@@ -25,6 +25,17 @@ import { tags } from "@lezer/highlight";
 import { BackToTopButton, BACK_TO_TOP_THRESHOLD } from "@/components/BackToTopButton";
 import { FindReplaceBar } from "@/components/FindReplaceBar";
 import { ImageContextMenu, type ImageMenuState } from "@/components/ImageContextMenu";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 /**
  * Pasted/dropped images are embedded as `![](data:…)` so they render in the
@@ -51,6 +62,15 @@ const MONO_FONT =
 
 /** Matches `![alt](data:…)` so we can pull alt + url out of an Image node. */
 const DATA_IMAGE_RE = /^!\[([\s\S]*)\]\((data:[^)\s]+)\)/;
+
+/**
+ * Lets ImageCardWidget's dblclick open the framework alt dialog instead of
+ * window.prompt (native dialogs are banned; see CLAUDE.md 提示组件规范).
+ * Module-level because the widget is built inside a memoized ([]-deps)
+ * StateField that has no access to React state; <Editor> installs the real
+ * implementation on every render (there is only one editor per page).
+ */
+const altAsker: { current: ((alt: string) => Promise<string | null>) | null } = { current: null };
 
 function fileToDataUrl(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -230,16 +250,19 @@ class ImageCardWidget extends WidgetType {
         selection: EditorSelection.range(this.imgFrom, this.imgTo),
       });
     });
-    // Double click → edit alt text without ever exposing the base64.
+    // Double click → edit alt text without ever exposing the base64. The
+    // framework dialog resolves null on cancel, any string (incl. "") applies.
     wrap.addEventListener("dblclick", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const next = window.prompt("图片替代文本（alt）", alt);
-      if (next !== null) {
+      const ask = altAsker.current;
+      if (!ask) return;
+      void ask(alt).then((next) => {
+        if (next === null) return;
         view.dispatch({
           changes: { from: this.imgFrom, to: this.imgTo, insert: `![${next}](${url})` },
         });
-      }
+      });
     });
 
     wrap.append(img, text, del);
@@ -506,6 +529,24 @@ export function Editor({
   // The find/replace bar registers its live-update handler here.
   const frCallbacks = useRef<{ onUpdate?: (u: ViewUpdate) => void }>({});
 
+  // Alt-edit dialog: opened imperatively by image card widgets (double-click)
+  // through the module-level altAsker, which hands the widget a Promise.
+  // `null` resolves as cancel; any string (incl. "") is applied.
+  const altResolve = useRef<((v: string | null) => void) | null>(null);
+  const [altEdit, setAltEdit] = useState<string | null>(null);
+  altAsker.current = (alt) =>
+    new Promise((resolve) => {
+      altResolve.current?.(null); // a previous ask is still pending → cancel it
+      altResolve.current = resolve;
+      setAltEdit(alt);
+    });
+  const finishAlt = useCallback((v: string | null) => {
+    altResolve.current?.(v);
+    altResolve.current = null;
+    setAltEdit(null);
+    viewRef.current?.focus();
+  }, []);
+
   // Right-click image → shared save menu (same one the preview uses). Card
   // (data-URL) images expose a real <img>; remote-URL images are plain text and
   // are resolved through the syntax tree. Plain browser listener on the wrapper
@@ -682,6 +723,38 @@ export function Editor({
       />
       <ImageContextMenu menu={imgMenu} onClose={closeImgMenu} />
       <BackToTopButton visible={!atTop} onClick={scrollToTop} label="返回编辑器顶部" />
+
+      <Dialog open={altEdit !== null} onOpenChange={(o) => !o && finishAlt(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>图片替代文本</DialogTitle>
+            <DialogDescription>修改 alt 文本，便于无障碍阅读与搜索理解。</DialogDescription>
+          </DialogHeader>
+          <form
+            className="grid gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              finishAlt(altEdit ?? "");
+            }}
+          >
+            <div className="grid gap-2">
+              <Label htmlFor="img-alt">替代文本（alt）</Label>
+              <Input
+                id="img-alt"
+                value={altEdit ?? ""}
+                onChange={(e) => setAltEdit(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => finishAlt(null)}>
+                取消
+              </Button>
+              <Button type="submit">确定</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("renders the editor workspace and primary actions", async ({ page }) => {
-  await expect(page.getByRole("heading", { name: "微信 Markdown 排版" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "MDInline", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Markdown 编辑" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "公众号预览" })).toBeVisible();
   await expect(page.getByRole("button", { name: "复制 HTML" })).toBeVisible();
@@ -25,8 +25,7 @@ test("switches style categories with accessible tabs", async ({ page }) => {
 });
 
 test("saves a named theme through the shadcn dialog", async ({ page }) => {
-  await page.getByRole("button", { name: "更多主题操作" }).click();
-  await page.getByRole("menuitem", { name: "保存当前主题" }).click();
+  await page.getByRole("button", { name: "保存主题", exact: true }).click();
 
   const dialog = page.getByRole("dialog", { name: "保存当前主题" });
   await expect(dialog).toBeVisible();
@@ -35,7 +34,7 @@ test("saves a named theme through the shadcn dialog", async ({ page }) => {
 
   await expect(dialog).toBeHidden();
   await expect(page.getByText("已保存主题「测试主题」到主题库")).toBeVisible();
-  await expect(page.getByRole("combobox", { name: "选择我的主题" })).toBeEnabled();
+  await expect(page.getByRole("combobox", { name: "选择主题" })).toBeEnabled();
 });
 
 test("opens the template market and applies a template", async ({ page }) => {

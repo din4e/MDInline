@@ -12,6 +12,16 @@ import { TemplateMarket } from "@/components/TemplateMarket";
 import { Toolbar } from "@/components/Toolbar";
 import { ThemeBar } from "@/components/ThemeBar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -317,11 +327,15 @@ export default function Page() {
     }
   }, [activeDoc, markSaved, renameTitle, notify]);
 
+  // Closing a dirty tab asks first — via the framework AlertDialog, never
+  // window.confirm (native dialogs are banned; see CLAUDE.md 提示组件规范).
+  const [closeAsk, setCloseAsk] = useState<{ id: string; title: string } | null>(null);
   const handleCloseTab = useCallback(
     (id: string) => {
       const d = docs.find((x) => x.id === id);
-      if (d?.dirty && !window.confirm(`「${d.title}」有未保存的改动,确认关闭?`)) return;
-      closeTab(id);
+      if (!d) return;
+      if (d.dirty) setCloseAsk({ id, title: d.title });
+      else closeTab(id);
     },
     [docs, closeTab],
   );
@@ -598,6 +612,26 @@ export default function Page() {
       )}
 
       <TemplateMarket open={marketOpen} onOpenChange={setMarketOpen} onApply={applyTheme} onToast={notify} likeable={!wails} />
+
+      <AlertDialog open={closeAsk !== null} onOpenChange={(o) => !o && setCloseAsk(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>关闭「{closeAsk?.title}」？</AlertDialogTitle>
+            <AlertDialogDescription>该文档有未保存的改动，关闭后将丢失。</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (closeAsk) closeTab(closeAsk.id);
+              }}
+            >
+              关闭
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={wechatOpen} onOpenChange={setWechatOpen}>
         <DialogContent className="sm:max-w-md">
