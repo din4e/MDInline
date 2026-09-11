@@ -300,14 +300,15 @@ export function StylePanel({ theme, update }: PanelProps) {
   };
   return (
     <Tabs className="min-h-0 flex-1 gap-0" value={active} onValueChange={(value) => setActive(value as typeof active)}>
-      <div className="flex items-center gap-2 border-b px-2.5 py-1.5">
-        {/* 6 categories as an equi-width 3×2 grid: at the panel's draggable
-            widths (~280px+) a single row overflowed and clipped the last tab.
+      <div className="@container flex items-center gap-2 border-b px-2.5 py-1.5">
+        {/* 6 categories in ONE row (compact 11px labels) whenever the panel is
+            wide enough; a container query falls back to a 3×2 grid below
+            ~320px so the narrowest draggable panel never clips the labels.
             `h-auto!` overrides the base `group-data-horizontal/tabs:h-8`, whose
             variant selector out-specifies a plain h-auto and would clip row 2. */}
-        <TabsList className="h-auto! min-w-0 flex-1 grid grid-cols-3 gap-1.5" aria-label="样式类别">
+        <TabsList className="h-auto! min-w-0 flex-1 grid grid-cols-3 gap-1 @[320px]:grid-cols-6" aria-label="样式类别">
           {TABS.map((tab) => (
-            <TabsTrigger className="h-7 min-w-0 px-1 text-xs" key={tab.key} value={tab.key}>{tab.label}</TabsTrigger>
+            <TabsTrigger className="h-7 min-w-0 px-1 text-[11px]" key={tab.key} value={tab.key}>{tab.label}</TabsTrigger>
           ))}
         </TabsList>
         <Button
