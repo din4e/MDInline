@@ -301,14 +301,17 @@ export function StylePanel({ theme, update }: PanelProps) {
   return (
     <Tabs className="min-h-0 flex-1 gap-0" value={active} onValueChange={(value) => setActive(value as typeof active)}>
       <div className="@container flex items-center gap-2 border-b px-2.5 py-1.5">
-        {/* 6 categories in ONE row (compact 11px labels) whenever the panel is
-            wide enough; a container query falls back to a 3×2 grid below
-            ~320px so the narrowest draggable panel never clips the labels.
-            `h-auto!` overrides the base `group-data-horizontal/tabs:h-8`, whose
-            variant selector out-specifies a plain h-auto and would clip row 2. */}
-        <TabsList className="h-auto! min-w-0 flex-1 grid grid-cols-3 gap-1 @[320px]:grid-cols-6" aria-label="样式类别">
+        {/* 6 categories in ONE row (labels are centered in their cell, so the
+            trigger needs no inner padding — the cell IS the pill). Measured
+            no-clip floor is a 275px pane (自定义 needs a 33px cell); the
+            @[270px] container query falls back to a 3×2 grid below that with
+            margin, i.e. only when the panel is dragged near its 16% floor.
+            `h-auto!` overrides the base `group-data-horizontal/tabs:h-8`,
+            whose variant selector out-specifies a plain h-auto and would clip
+            row 2. */}
+        <TabsList className="h-auto! min-w-0 flex-1 grid grid-cols-3 gap-0.5 @[270px]:grid-cols-6" aria-label="样式类别">
           {TABS.map((tab) => (
-            <TabsTrigger className="h-7 min-w-0 px-1 text-[11px]" key={tab.key} value={tab.key}>{tab.label}</TabsTrigger>
+            <TabsTrigger className="h-7 min-w-0 px-0 text-[11px]" key={tab.key} value={tab.key}>{tab.label}</TabsTrigger>
           ))}
         </TabsList>
         <Button
