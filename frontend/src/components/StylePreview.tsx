@@ -1,12 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { STYLE_SPECIMEN } from "@/lib/md";
 import { buildSpecimenDoc, render } from "@/lib/pipeline";
 import type { ThemeConfig } from "@/lib/theme";
 import { useDebounced } from "@/hooks/useDebounced";
+
+/** Persists whether the specimen is expanded, so a collapsed preview stays
+ *  collapsed across sessions instead of eating panel height again. */
+const SPECIMEN_OPEN_KEY = "mdcss.specimenOpen";
 
 /**
  * A persistent, live "style specimen" shown at the top of the style panel.
@@ -18,6 +22,27 @@ import { useDebounced } from "@/hooks/useDebounced";
  */
 export function StylePreview({ theme }: { theme: ThemeConfig }) {
   const [open, setOpen] = useState(true);
+  // Load the persisted state after mount (reading localStorage during render
+  // would mismatch the prerendered static HTML).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SPECIMEN_OPEN_KEY);
+      if (saved !== null) setOpen(saved === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const toggle = () =>
+    setOpen((o) => {
+      const next = !o;
+      try {
+        localStorage.setItem(SPECIMEN_OPEN_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+
   const debTheme = useDebounced(theme, 150);
 
   const doc = useMemo(() => {
@@ -27,12 +52,12 @@ export function StylePreview({ theme }: { theme: ThemeConfig }) {
 
   return (
     <div className={`shrink-0 border-b ${open ? "bg-muted/70" : "bg-background"}`}>
-      <Button variant="ghost" className="h-auto w-full justify-between rounded-none px-3 py-2 text-xs font-semibold text-muted-foreground" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="style-specimen-content">
+      <Button variant="ghost" className="h-auto w-full justify-between rounded-none px-3 py-1.5 text-xs font-semibold text-muted-foreground" onClick={toggle} aria-expanded={open} aria-controls="style-specimen-content">
         <span>样式预览（实时）</span>
         {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
       </Button>
       {open && (
-        <div className="px-2.5 pb-2.5" id="style-specimen-content">
+        <div className="px-2.5 pb-2" id="style-specimen-content">
           <iframe
             className="block h-49 w-full rounded-md border bg-muted"
             title="样式预览"

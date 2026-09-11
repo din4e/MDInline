@@ -98,19 +98,14 @@ export function RangeField({ label, value, onChange, min, max, step = 1, suffix 
   const id = useId();
   const num = useClampedNumber(value, onChange, min, max);
   return (
-    <div className="mb-3">
-      <Label className="mb-1 block text-xs text-muted-foreground" htmlFor={`${id}-number`}>
-        {label}{suffix ? ` (${suffix})` : ""}
-      </Label>
-      <div className="flex items-center gap-2">
-        <Slider
-          aria-label={label}
-          value={[value]}
-          min={min}
-          max={max}
-          step={step}
-          onValueChange={([next]) => onChange(next)}
-        />
+    <div className="mb-2.5">
+      {/* Label + numeric input share the top row (same label-left grammar as the
+          other fields); the slider then gets the full width below — longer track,
+          consistent alignment across field types. */}
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <Label className="text-xs text-muted-foreground" htmlFor={`${id}-number`}>
+          {label}{suffix ? ` (${suffix})` : ""}
+        </Label>
         <Input
           id={`${id}-number`}
           className={numberInputClass}
@@ -125,6 +120,14 @@ export function RangeField({ label, value, onChange, min, max, step = 1, suffix 
           onBlur={num.onBlur}
         />
       </div>
+      <Slider
+        aria-label={label}
+        value={[value]}
+        min={min}
+        max={max}
+        step={step}
+        onValueChange={([next]) => onChange(next)}
+      />
     </div>
   );
 }
@@ -133,7 +136,7 @@ export function NumberField({ label, value, onChange, min, max, step = 1, suffix
   const id = useId();
   const num = useClampedNumber(value, onChange, min, max);
   return (
-    <div className="mb-2.5 grid grid-cols-[1fr_auto] items-center gap-2">
+    <div className="mb-2 grid grid-cols-[1fr_auto] items-center gap-2">
       <Label className="text-xs text-muted-foreground" htmlFor={id}>{label}</Label>
       <span className="flex items-center gap-1">
         <Input
@@ -164,7 +167,7 @@ interface ColorProps {
 export function ColorField({ label, value, onChange }: ColorProps) {
   const id = useId();
   return (
-    <div className="mb-2.5 grid grid-cols-[1fr_auto] items-center gap-2">
+    <div className="mb-2 grid grid-cols-[1fr_auto] items-center gap-2">
       <Label className="text-xs text-muted-foreground" htmlFor={`${id}-text`}>{label}</Label>
       <span className="flex items-center gap-1.5">
         <input
@@ -195,7 +198,7 @@ interface SelectProps {
 export function SelectField({ label, value, onChange, options }: SelectProps) {
   const id = useId();
   return (
-    <div className="mb-2.5 grid grid-cols-[1fr_auto] items-center gap-2">
+    <div className="mb-2 grid grid-cols-[1fr_auto] items-center gap-2">
       <Label className="text-xs text-muted-foreground" id={`${id}-label`}>{label}</Label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="min-w-24" aria-labelledby={`${id}-label`}>
@@ -217,7 +220,7 @@ interface SegmentProps extends SelectProps {}
 
 export function SegField({ label, value, onChange, options }: SegmentProps) {
   return (
-    <div className="mb-2.5 grid grid-cols-[1fr_auto] items-center gap-2">
+    <div className="mb-2 grid grid-cols-[1fr_auto] items-center gap-2">
       <span className="text-xs text-muted-foreground">{label}</span>
       <ToggleGroup
         type="single"
@@ -229,7 +232,14 @@ export function SegField({ label, value, onChange, options }: SegmentProps) {
         aria-label={label}
       >
         {options.map((option) => (
-          <ToggleGroupItem key={option.value} value={option.value} aria-label={option.label}>
+          <ToggleGroupItem
+            key={option.value}
+            value={option.value}
+            aria-label={option.label}
+            /* The outline toggle's on-state (bg-muted) is identical to its hover
+               state; tint with primary so the selection reads at a glance. */
+            className="data-[state=on]:border-primary/50 data-[state=on]:bg-primary/10 data-[state=on]:text-foreground hover:data-[state=on]:bg-primary/15"
+          >
             {option.label}
           </ToggleGroupItem>
         ))}
@@ -247,7 +257,7 @@ interface ToggleProps {
 export function ToggleField({ label, checked, onChange }: ToggleProps) {
   const id = useId();
   return (
-    <div className="mb-2.5 grid grid-cols-[1fr_auto] items-center gap-2">
+    <div className="mb-2 grid grid-cols-[1fr_auto] items-center gap-2">
       <Label className="text-xs text-muted-foreground" htmlFor={id}>{label}</Label>
       <Switch id={id} checked={checked} onCheckedChange={onChange} />
     </div>
@@ -257,7 +267,10 @@ export function ToggleField({ label, checked, onChange }: ToggleProps) {
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <h3 className="mt-3.5 mb-2 text-xs font-bold tracking-wide text-muted-foreground first:mt-0">{title}</h3>
+      <h3 className="mt-3 mb-2 flex items-center gap-2 text-[11px] font-bold tracking-widest text-muted-foreground first:mt-0">
+        {title}
+        <span className="h-px flex-1 bg-border" aria-hidden="true" />
+      </h3>
       {children}
     </section>
   );

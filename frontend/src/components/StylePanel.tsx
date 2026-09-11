@@ -4,8 +4,6 @@ import { useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { collapseIconBtn, HIDE_LABEL_960 } from "@/components/ui/responsive";
-import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -58,9 +56,9 @@ const HL_OPTS = (Object.keys(HL_THEMES) as Array<keyof typeof HL_THEMES>).map((k
   label: k,
 }));
 const hintClass = "mt-1.5 text-[11px] leading-relaxed text-muted-foreground";
-const fieldStackClass = "mb-3";
+const fieldStackClass = "mb-2.5";
 const fieldLabelClass = "mb-1 block text-xs text-muted-foreground";
-const fieldClass = "mb-2.5 grid grid-cols-[1fr_auto] items-center gap-2";
+const fieldClass = "mb-2 grid grid-cols-[1fr_auto] items-center gap-2";
 const colorRowClass = "flex items-center gap-1.5";
 const colorInputClass = "h-7 w-8 cursor-pointer rounded-md border bg-background p-0";
 
@@ -87,7 +85,7 @@ function Typography({ theme: t, update }: PanelProps) {
             </SelectContent>
           </Select>
           <Input
-            className="mt-1 w-full"
+            className="mt-1 w-full font-mono text-[11px]"
             aria-label="自定义正文字体族"
             value={b.fontFamily}
             onChange={(e) => update({ base: { fontFamily: e.target.value } })}
@@ -152,8 +150,8 @@ function Headings({ theme: t, update }: PanelProps) {
       {levels.map((lv) => {
         const h = t.headings[lv];
         return (
-          <div className="mb-3 rounded-md border p-3" key={lv}>
-            <div className="mb-2 flex items-center justify-between text-[13px] font-semibold">
+          <div className="mb-2 rounded-md border p-2" key={lv}>
+            <div className="mb-1.5 flex items-center justify-between text-[13px] font-semibold">
               <span>{lv.toUpperCase()}</span>
               {(lv === "h1" || lv === "h2") && (
                 <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -184,8 +182,12 @@ function Headings({ theme: t, update }: PanelProps) {
             </div>
             <SelectField label="字重" value={String(h.fontWeight)} onChange={(v) => update(headingPatch(lv, { fontWeight: Number(v) }))}
               options={[{ value: "400", label: "400" }, { value: "600", label: "600" }, { value: "700", label: "700" }, { value: "900", label: "900" }]} />
-            <RangeField label="上边距" value={h.marginTop} min={0} max={48} step={1} suffix="px" onChange={(v) => update(headingPatch(lv, { marginTop: v }))} />
-            <RangeField label="下边距" value={h.marginBottom} min={0} max={48} step={1} suffix="px" onChange={(v) => update(headingPatch(lv, { marginBottom: v }))} />
+            {/* Margins pair side-by-side — six full-width slider fields per card
+                made the 标题 tab the longest scroll in the panel. */}
+            <div className="grid grid-cols-2 gap-x-4">
+              <RangeField label="上边距" value={h.marginTop} min={0} max={48} step={1} suffix="px" onChange={(v) => update(headingPatch(lv, { marginTop: v }))} />
+              <RangeField label="下边距" value={h.marginBottom} min={0} max={48} step={1} suffix="px" onChange={(v) => update(headingPatch(lv, { marginBottom: v }))} />
+            </div>
           </div>
         );
       })}
@@ -299,24 +301,28 @@ export function StylePanel({ theme, update }: PanelProps) {
   return (
     <Tabs className="min-h-0 flex-1 gap-0" value={active} onValueChange={(value) => setActive(value as typeof active)}>
       <div className="flex items-center gap-2 border-b px-2.5 py-1.5">
-        <TabsList className="h-auto min-w-0 flex-1 justify-start overflow-x-auto overflow-y-hidden bg-transparent" aria-label="样式类别">
+        {/* 6 categories as an equi-width 3×2 grid: at the panel's draggable
+            widths (~280px+) a single row overflowed and clipped the last tab.
+            `h-auto!` overrides the base `group-data-horizontal/tabs:h-8`, whose
+            variant selector out-specifies a plain h-auto and would clip row 2. */}
+        <TabsList className="h-auto! min-w-0 flex-1 grid grid-cols-3 gap-1.5" aria-label="样式类别">
           {TABS.map((tab) => (
-            <TabsTrigger className="flex-none min-w-max" key={tab.key} value={tab.key}>{tab.label}</TabsTrigger>
+            <TabsTrigger className="h-7 min-w-0 px-1 text-xs" key={tab.key} value={tab.key}>{tab.label}</TabsTrigger>
           ))}
         </TabsList>
         <Button
           variant="ghost"
-          size="sm"
+          size="icon-sm"
           onClick={resetActive}
           title={`重置「${activeTab.label}」为模板默认值`}
-          className={cn(collapseIconBtn.sm, "shrink-0 gap-1 text-muted-foreground")}
+          aria-label={`重置「${activeTab.label}」为模板默认值`}
+          className="shrink-0 text-muted-foreground"
         >
           <RotateCcw />
-          <span className={HIDE_LABEL_960}>重置</span>
         </Button>
       </div>
       <StylePreview theme={theme} />
-      <TabsContent className="m-0 flex-1 overflow-y-auto p-3.5 [scrollbar-gutter:stable] max-[720px]:overflow-visible" value={active}>
+      <TabsContent className="m-0 flex-1 overflow-y-auto p-3 [scrollbar-gutter:stable] max-[720px]:overflow-visible" value={active}>
         <Current theme={theme} update={update} />
       </TabsContent>
     </Tabs>
